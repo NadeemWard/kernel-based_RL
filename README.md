@@ -1,5 +1,5 @@
 # kernel-based_RL
-Reimplementation of "Kernel-Based Reinforcement Learning" Ormoneit and Sen (2002) (https://link.springer.com/content/pdf/10.1023/A:1017928328829.pdf)
+Reimplementation of "Kernel-Based Reinforcement Learning" Ormoneit and Sen (2002) (https://link.springer.com/content/pdf/10.1023/A:1017928328829.pdf). Code was based on another implementation (https://github.com/rezazzr/kernel_based_reinforcement_learning)
 
 # Results
 
