@@ -13,4 +13,8 @@ Example.ipynb is an example jupyter notebook demonstrating functionality.
 
 Both the Kernel-Based Linear Program and Kernel-based value iteration algorithms where run on OpenAI's [Cartpole](https://gym.openai.com/envs/CartPole-v0/) environment. This environment has a continuous state space and 2 discrete actions (left and right). It is considered solved when the reward reaches 200.
 
-![kbrl Cartpole](plots/kbrl_diff_bandwidth_gamma=099_myVI.png)
+### Solving CartPole using a Kernel-Based LP
+![kbrl Cartpole](plots/KBLP_2000_guidedsamples.png)
+
+### Solving CartPole using Kernel-Based Value Iteration
+![kbrl Cartpole](plots/KBRL_2000_guidedsamples.png)
