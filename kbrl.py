@@ -8,8 +8,8 @@ import sys
 import cvxpy as cp
 import pdb
 
-
-def get_data(env, total_samples_per_action=1000):
+def get_data(env, total_samples_per_action=1000, random = True, V=None, R=None, kernel = None,
+             data = None, gamma = None):
     '''
     Function to collect data at random from OpenAI gym type environment. Use for CartPole-v0 primarily
     :param env: gym type env
@@ -35,7 +35,11 @@ def get_data(env, total_samples_per_action=1000):
         done = False
         while not done:
 
-            action = env.action_space.sample()
+            if random:
+                action = env.action_space.sample()
+            else:
+                action = get_action(V, R, kernel, data, gamma, x)
+
             next_x, reward, done, _ = env.step(action)
 
             if num_samples_per_action[action] < total_samples_per_action:
@@ -144,7 +148,7 @@ def value_iteration(Theta, R, gamma, stopping_criteria=10e-5, axis=2):
         V_old = V
         num_iterations += 1
 
-    print("Number of iterations of value iterations until convergence:", num_iterations)
+    # print("Number of iterations of value iterations until convergence:", num_iterations)
     return V
 
 
@@ -231,7 +235,8 @@ def test_kbrl_env(env, V=None, R=None, kernel=None, gamma=None, data=None, num_e
     return np.array(rewards)
 
 
-def plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num_episodes=10, axis = 2, lp=False):
+def plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals,
+                 num_episodes=10, axis = 2, lp=False, path = None):
     '''
     Plotting function. Putting everything together
 
@@ -243,6 +248,7 @@ def plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num
     :param num_episodes: number of episode we want to average performance over
     :param axis: how to maximize in policy iteration
     :param lp: wheter to solve using LP approach or not
+    :param path: path to save model to. If None won't save.
     :return: None. Just plot the result
     '''
 
@@ -269,6 +275,11 @@ def plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num
                 V = value_iteration(Theta, reward_data, gamma=gamma, stopping_criteria=10e-3, axis= axis)
             # V = different_value_iteration(X, Y, reward_data, kernel = kernel, gamma = gamma)
 
+            # save model
+            if path:
+                np.savez(path + "/data_gamma=" + str(gamma)+"_b=" + str(b), V = V,
+                        transition_data = transition_data, reward_data = reward_data)
+
             # run on test environement
             rewards.append(test_kbrl_env(env, V=V, R=reward_data, kernel=kernel, gamma=gamma,
                                          data=transition_data, num_episodes=num_episodes, random=False))
@@ -278,14 +289,18 @@ def plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num
         average = rewards.mean(axis=1)
         sigma = rewards.std(axis=1)
 
+        # save results
+        if path:
+            np.savez(path + "/results", rewards = rewards, average = average, sigma = sigma)
+
         plt.plot(kernel_vals, average, label="gamma = {0}".format(gamma))
         plt.fill_between(kernel_vals, average + sigma, average - sigma, alpha=0.5)
 
         # plt.plot(kernel_vals, [random_reward] * len(kernel_vals), label="Random Agent")
 
     plt.xlabel("bandwidth value")
-    plt.ylabel("Average reward (time spent upright)")
-    plt.title("Average performance for different values of the bandwidth parameter")
+    plt.ylabel("Average reward")
+    # plt.title("Average performance for different values of the bandwidth parameter")
     plt.legend()
 
     plt.show()
@@ -325,18 +340,15 @@ if __name__ == "__main__":
     # Define env
     env = gym.make("CartPole-v0")
     gamma = 0.99
-    num_actions = env.action_space[1]
+    num_actions = env.action_space.n
 
     # get data
-    num_samples_per_action = 1000
+    num_samples_per_action = 1500
     transition_data, reward_data = get_data(env, total_samples_per_action=num_samples_per_action)
-    print(transition_data.shape, reward_data.shape)
-
 
 
     X = transition_data[:, :, 0, :]  # num_samples_per_action, num_actions, dim_state
     Y = transition_data[:, :, 1, :]  # num_samples_per_action, num_actions, dim_state
-    print(X.shape, Y.shape)
 
     #####################################################################################################
     #################################### Value Iteration Approach #######################################
@@ -344,34 +356,10 @@ if __name__ == "__main__":
 
     # define kernel values to try
     kernel_vals = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.1, 0.2]
-    gamma_vals = [0.99] #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-
-    plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num_episodes=1000)
+    gamma_vals = [0.99]
+    #plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num_episodes=1000, save_name="KBRL_test2")
 
     #####################################################################################################
     ############################################## LP approach ##########################################
     #####################################################################################################
-
-    # plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num_episodes = 1000, lp = True) # takes a while 
-
-
-######## Older lp ############
-    # params
-    # bandwidth = 0.06
-    # gamma = 0.99
-    # num_episodes = 1000
-    #
-    # # define kernel
-    # kernel = RBF(bandwidth)
-    # # compute kernel tensor
-    # Theta = kernel_tensor(X, Y, kernel)
-    #
-    # # define initial distribution
-    # init_dist = np.ones((num_samples_per_action, num_actions)) * 1 / num_samples_per_action
-    # print(init_dist)
-    # # solve using LP
-    # V = kblp(Theta, reward_data, gamma, init_dist)
-    # print(V)
-    #
-    # print(test_kbrl_env(env, V=V, R=reward_data, kernel=kernel, gamma=gamma,
-    #                                      data=transition_data, num_episodes=num_episodes, random=False))
+    plot_results(env, transition_data, reward_data, kernel_vals, gamma_vals, num_episodes = 1000, lp = True, save_name="LP_test9") # takes a while
